@@ -1,121 +1,165 @@
 import type { AxiosInstance } from "axios";
 import axios from "axios";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
+import api from "../api/api";
 
 interface User {
-    id: string;
-    name: string;
+  id: string;
+  name: string;
 }
 
 interface AppContextInterface {
+  user: User | null;
+  token: string | null;
+  loading: boolean;
 
-    user: User | null;
-    token: string | null;
-    loading: boolean;
-    api : AxiosInstance;
-    login: (email: string, password:string)=> Promise<{success: boolean; message?: string}>;
-    register: (name: string, email: string, password:string)=> Promise<{success: boolean; message?: string}>;
-    logout: ()=> void;
+  login: (
+    email: string,
+    password: string,
+  ) => Promise<{ success: boolean; message?: string }>;
+
+  register: (
+    name: string,
+    email: string,
+    password: string,
+  ) => Promise<{ success: boolean; message?: string }>;
+
+  logout: () => void;
 }
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080"
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";
 
 const AppContext = createContext<AppContextInterface | undefined>(undefined);
 
-const [user, setUser] = useState<User | null>(null)
-const [token, setToken] = useState<string | null>(localStorage.getItem("token"))
-const [loading, setLoading] = useState(true);
+export function AppProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(
+    localStorage.getItem("token"),
+  );
+  const [loading, setLoading] = useState(true);
 
-//axios instance with auth header
-
-const api = axios.create({
-    baseURL: BACKEND_URL;
-
-})
-
-api.interceptors.request.use((config)=>{
-    const token = localStorage.getItem("token")
-
-
-    if(token){
-        config.headers.Authorization = `Bearer ${token}`
-    }
-
-    return config;
-})
-
-const loadUser = async ()=>{
-    if(!token){
-        setLoading(false)
-        return;
+  const loadUser = async () => {
+    if (!token) {
+      setLoading(false);
+      return;
     }
 
     try {
-        const {data} = await api.get('/api/auth/user')
+      const { data } = await api.get("/api/auth/user");
 
-        if(data.success){
-            setUser(data.user)
-        }
+      if (data.success) {
+        setUser(data.user);
+      }
     } catch (error) {
-        localStorage.removeItem("token");
-        setToken(null);
-        setUser(null);
+      console.error("Load User Error:", error);
+
+      localStorage.removeItem("token");
+      setToken(null);
+      setUser(null);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-}
+  };
 
-useEffect(()=>{
-    loadUser()
-},[])
+  useEffect(() => {
+    loadUser();
+  }, [token]);
 
-const login = async (email: string, password:string)=>{
+  const login = async (
+    email: string,
+    password: string,
+  ): Promise<{ success: boolean; message?: string }> => {
     try {
-        const res = await  axios.post(`${BACKEND_URL}/api/auth/login`,{email,password})
+      const { data } = await api.post("/api/auth/login", {
+        email,
+        password,
+      });
 
-        if(res.data.success){
-            setToken(res.data.token)
-            setUser(res.data.user);
-            localStorage.setItem("token", res.data.token)
-            return {success: true}
-        }
-        return {success: false, message: res.data.message}
-    } catch (error:any) {
-        return {success: false, message: error.response?.data?.message || "login failed"}
+      if (data.success) {
+        setToken(data.token);
+        setUser(data.user);
+
+        localStorage.setItem("token", data.token);
+
+        return { success: true };
+      }
+
+      return {
+        success: false,
+        message: data.message,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || "Login failed",
+      };
     }
-}
+  };
 
-const register = async (name: string, email: string, password: string)=>{
- try {
-        const res = await  axios.post(`${BACKEND_URL}/api/auth/register`,{name,email,password})
+  const register = async (
+    name: string,
+    email: string,
+    password: string,
+  ): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const { data } = await api.post("/api/auth/register", {
+        name,
+        email,
+        password,
+      });
 
-        if(res.data.success){
-            setToken(res.data.token)
-            setUser(res.data.user);
-            localStorage.setItem("token", res.data.token)
-            return {success: true}
-        }
-        return {success: false, message: res.data.message}
-    } catch (error:any) {
-        return {success: false, message: error.response?.data?.message || "Registratio failed"}
+      if (data.success) {
+        setToken(data.token);
+        setUser(data.user);
+
+        localStorage.setItem("token", data.token);
+
+        return { success: true };
+      }
+
+      return {
+        success: false,
+        message: data.message,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || "Registration failed",
+      };
     }
+  };
+
+  const logout = () => {
+    setToken(null);
+    setUser(null);
+
+    localStorage.removeItem("token");
+  };
+
+  const value: AppContextInterface = {
+    user,
+    token,
+    loading,
+    login,
+    register,
+    logout,
+  };
+
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
-const logout = async ()=>{
+export function useApp() {
+  const context = useContext(AppContext);
 
-}
+  if (!context) {
+    throw new Error("useApp must be used within AppProvider");
+  }
 
-const value = {user, token, loading, api, login, register, logout}
-
-export function AppProvider({children}: {children: ReactNode}){
-    return <AppContext.Provider value={value}>
-        {children}
-    </AppContext.Provider>
-}
-
-export function useApp(){
-    const context = useContext(AppContext)
-
-    if(!context) throw new Error("useApp must be used with AppProvider")
-
-    return context
+  return context;
 }
