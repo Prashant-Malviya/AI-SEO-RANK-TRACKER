@@ -149,32 +149,35 @@ export default function RankTracker() {
         }
       }, 3000);
     } catch (error) {
-        console.error("refresh failed: ", error)
-        setRefreshing(null);
+      console.error("refresh failed: ", error);
+      setRefreshing(null);
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this keyword tracking?")) return;
-    
+
     try {
-        await api.delete(`/api/rank/${id}`);
-        setKeywords((prev)=>prev.filter((k)=>k._id !==id))
+      await api.delete(`/api/rank/${id}`);
+      setKeywords((prev) => prev.filter((k) => k._id !== id));
     } catch (error) {
-        console.error("Deleted failed ", error)
+      console.error("Deleted failed ", error);
     }
     setDeleting(null);
   };
 
   const handleToggle = async (id: string) => {
     try {
-     const res = await api.put(`/api/rank/${id}/toggle`);
-     if(res.data.success)
-        setKeywords((prev)=>prev.map((k)=>k._id ===id ? {...k, active: res.data.tracking.active}:k))
+      const res = await api.put(`/api/rank/${id}/toggle`);
+      if (res.data.success)
+        setKeywords((prev) =>
+          prev.map((k) =>
+            k._id === id ? { ...k, active: res.data.tracking.active } : k,
+          ),
+        );
     } catch (error) {
-        console.error("toggle failed ", error)
+      console.error("toggle failed ", error);
     }
-    
   };
 
   const getPositionBadge = (pos: number | null) => {
