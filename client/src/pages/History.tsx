@@ -43,7 +43,7 @@ export default function History() {
     
     try {
         
-        const res = await api.get(`/api/analysis/list?page=${page}&limit`);
+        const res = await api.get(`/api/analysis/list?page=${page}&limit=10`);
 
         if(res.data.success){
             setAnalyses(res.data.analyses)

@@ -11,7 +11,7 @@ export async function keywordTracking(tracking) {
         for(let attempt = 1; attempt <=2; attempt++){
             result = await rankTracker(tracking.keyword, tracking.domain)
 
-            if(result.success && result.datat.totalResultScanned > 0)
+            if(result.success && result.data.totalResultsScanned > 0)
                 break;
 
             if(attempt < 2)
@@ -33,7 +33,7 @@ export async function keywordTracking(tracking) {
 
             tracking.status = "completed";
 
-            tracking.positionChange = prev && result.data.position  ? prev - result.data.position : 0;
+            tracking.positionChange = previous && result.data.position  ? previous - result.data.position : 0;
 
             if(result.data.position && (!tracking.bestPosition || result.data.position < tracking.bestPosition)){
                 tracking.bestPosition = result.data.position;
@@ -42,7 +42,7 @@ export async function keywordTracking(tracking) {
             //update history
 
             const historyEntry = {
-                data: today,
+                date: today,
                 position: result.data.position,
                 page: result.data.page,
                 title: result.data.title,

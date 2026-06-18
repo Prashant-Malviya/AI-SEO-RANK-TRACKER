@@ -59,6 +59,10 @@ export default function RankDetail() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const chartRef = useRef<HTMLCanvasElement>(null);
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  );
 
   const fetchTracking = async () => {
     try {
@@ -66,8 +70,9 @@ export default function RankDetail() {
 
       if (res.data.success) {
         if (res.data.tracking.status === "checking") {
-          setTimeout(fetchTracking, 3000);
+          pollTimeoutRef.current = setTimeout(fetchTracking, 3000);
           setTracking(res.data.tracking);
+          setLoading(false);
           return;
         }
         setTracking(res.data.tracking);
@@ -82,21 +87,26 @@ export default function RankDetail() {
     if (!tracking) return;
     setRefreshing(true);
     try {
-      await api.post(`/api/rank/${tracking._id}/refresh}`);
+      await api.post(`/api/rank/${tracking._id}/refresh`);
       setTracking((prev) => (prev ? { ...prev, status: "checking" } : null));
-      const pollInterval = setInterval(async () => {
+      if (refreshIntervalRef.current) clearInterval(refreshIntervalRef.current);
+
+      refreshIntervalRef.current = setInterval(async () => {
         try {
           const check = await api.get(`/api/rank/${tracking._id}`);
 
           if (check.data.tracking.status !== "checking") {
-            clearInterval(pollInterval);
+            if (refreshIntervalRef.current) {
+              clearInterval(refreshIntervalRef.current);
+              refreshIntervalRef.current = null;
+            }
             setTracking(check.data.tracking);
             setRefreshing(false);
           }
         } catch (error: any) {
           console.error(error);
         }
-      });
+      }, 3000);
     } catch {
       setRefreshing(false);
     }
@@ -281,6 +291,11 @@ export default function RankDetail() {
 
   useEffect(() => {
     (async () => await fetchTracking())();
+
+    return () => {
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+      if (refreshIntervalRef.current) clearInterval(refreshIntervalRef.current);
+    };
   }, [id]);
 
   useEffect(() => {

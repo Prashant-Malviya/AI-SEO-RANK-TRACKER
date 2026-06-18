@@ -84,7 +84,7 @@ const keywordTrackingSchema = new mongoose.Schema(
     },
     positionChange: {
       type: Number,
-      efault: 0,
+      default: 0,
     },
     rankHistory: [rankEntrySchema],
     competitors: [competitorSchema],

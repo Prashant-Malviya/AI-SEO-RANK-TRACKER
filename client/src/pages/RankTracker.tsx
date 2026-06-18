@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   Target,
@@ -57,6 +57,7 @@ export default function RankTracker() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
+  const pollIntervalsRef = useRef<ReturnType<typeof setInterval>[]>([]);
 
   const fetchKeywords = async () => {
     try {
@@ -110,6 +111,7 @@ export default function RankTracker() {
             console.error(error);
           }
         }, 3000);
+        pollIntervalsRef.current.push(pollInterval);
       }
     } catch (error: any) {
       setAddError(error.response?.data?.message || "Failed to add keyword");
@@ -148,6 +150,7 @@ export default function RankTracker() {
           console.error(error);
         }
       }, 3000);
+      pollIntervalsRef.current.push(pollInterval);
     } catch (error) {
       console.error("refresh failed: ", error);
       setRefreshing(null);
@@ -156,6 +159,8 @@ export default function RankTracker() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this keyword tracking?")) return;
+
+    setDeleting(id);
 
     try {
       await api.delete(`/api/rank/${id}`);
@@ -261,6 +266,11 @@ export default function RankTracker() {
 
   useEffect(() => {
     (async () => await fetchKeywords())();
+
+    return () => {
+      pollIntervalsRef.current.forEach(clearInterval);
+      pollIntervalsRef.current = [];
+    };
   }, []);
 
   return (

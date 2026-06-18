@@ -1,7 +1,5 @@
 import {GoogleGenAI, Type} from '@google/genai'
 
-const ai = new GoogleGenAI({apiKey: process.env.GEMINI_API_KEY})
-
 const seoAnalysisSchema = {
     type: Type.OBJECT,
     properties: {
@@ -54,6 +52,12 @@ const seoAnalysisSchema = {
 
 export async function analyzeSeoData(scrapedData) {
     try {
+        if (!process.env.GEMINI_API_KEY) {
+            return {success: false, error: "Gemini API key is not configured"}
+        }
+
+        const ai = new GoogleGenAI({apiKey: process.env.GEMINI_API_KEY})
+
         // Prompt for getting SEO Analysis structured data from AI
 const prompt = `You are an expert SEO analyst. Analyze the following website data and provide a comprehensive SEO audit.
 
@@ -114,7 +118,7 @@ Provide 5-15 issues sorted by severity (critical first). Be specific and actiona
 Extract top 10 keywords by frequency from the page content.`;
 
         const response = await ai.models.generateContent({
-            model: 'gemma-4-31b-it',
+            model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
             contents: [{role: "user", parts:[{text: prompt}]}],
             config: {
                 responseMimeType: "application/json",
@@ -122,7 +126,13 @@ Extract top 10 keywords by frequency from the page content.`;
             }
         })
 
-        const analysis = JSON.parse(response.text)
+        const text = response.text;
+
+        if (!text) {
+            return {success: false, error: "Gemini returned an empty response"}
+        }
+
+        const analysis = JSON.parse(text)
 
         return {success:true, data: analysis}
 

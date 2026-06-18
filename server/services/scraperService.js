@@ -1,14 +1,21 @@
 import { chromium } from "playwright-core";
 import Browserbase from "@browserbasehq/sdk";
 
-const bb = new Browserbase({
-    apiKey: process.env.BROWSERBASE_API_KEY,
-});
-
 export async function scraperUrl(url) {
     let browser;
 
     try {
+        if (!process.env.BROWSERBASE_API_KEY) {
+            return {
+                success: false,
+                error: "Browserbase API key is not configured",
+            };
+        }
+
+        const bb = new Browserbase({
+            apiKey: process.env.BROWSERBASE_API_KEY,
+        });
+
         // Create Browserbase session
         const session = await bb.sessions.create({
             browserSettings: {

@@ -19,7 +19,7 @@ export const analyzeUrl = async (req,res)=>{
         let validUrl;
 
         try {
-            validUrl: new url(url.startsWith("http") ? url : `https://${url}`)
+            validUrl = new URL(url.startsWith("http") ? url : `https://${url}`)
         } catch (error) {
             return res.status(400).json({success:false, message:"Invalid URL format"});
         }
@@ -34,7 +34,7 @@ export const analyzeUrl = async (req,res)=>{
             }
         )
 
-        res.json({
+        res.status(202).json({
             success: true,
             message: "Analysis started",
             analysisId: analysis._id
@@ -66,16 +66,16 @@ export const analyzeUrl = async (req,res)=>{
 
             //step3: save results
 
-            analysis.overAllScore = aiResult.data.overAllScore || 0;
+            analysis.overallScore = aiResult.data.overallScore || 0;
             analysis.categories = aiResult.data.categories || {};
             analysis.metaData = scrapeResult.data.metaData || {};
             analysis.headings = scrapeResult.data.headings || {};
             analysis.links = scrapeResult.data.links || {};
             analysis.images = scrapeResult.data.images || {};
-            analysis.Keywords = aiResult.data.Keywords || [];
+            analysis.keywords = aiResult.data.keywords || [];
             analysis.issues = aiResult.data.issues || [];
             analysis.loadTime = scrapeResult.data.loadTime || 0;
-            analysis.pageSize = scrapeResult.data.loadTime || 0
+            analysis.pageSize = scrapeResult.data.pageSize || 0
             analysis.wordCount = scrapeResult.data.wordCount || 0
             analysis.status = "completed";
 
@@ -96,7 +96,7 @@ export const analyzeUrl = async (req,res)=>{
     } catch (error) {
         console.error("analyse url error: ", error.message);
 
-        if(!res.headerSent){
+        if(!res.headersSent){
             res.status(500).json({success:false, message: "server error"})
         }
     }
@@ -126,18 +126,18 @@ export const getAllAnalysis = async (req,res)=>{
 
      try {
 
-        const page = parseInt(req.query.page) || 1;
+        const page = Math.max(parseInt(req.query.page) || 1, 1);
 
-        const limit = parseInt(req.query.limit) || 10;
+        const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 50);
 
         const skip = (page-1)*limit;
 
 
-        const analysis = await Analysis.find({userId: req.userId}).sort({createdAt:-1}).skip(skip).limit(limit).select("-issues -keywords")
+        const analyses = await Analysis.find({userId: req.userId}).sort({createdAt:-1}).skip(skip).limit(limit).select("-issues -keywords")
 
         const total = await Analysis.countDocuments({userId: req.userId})
 
-        res.json({success: true, analysis, pagination: {page, limit, total, pages: Math.ceil(total/limit)}})
+        res.json({success: true, analyses, pagination: {page, limit, total, pages: Math.ceil(total/limit)}})
     } catch (error) {
         console.error("get analyses error: ", error.message);
         res.status(500).json({success:false, message: "server error"})
@@ -148,8 +148,10 @@ export const getAllAnalysis = async (req,res)=>{
 export const deleteAnalysis = async(req,res)=>{
 
      try {
-        await Analysis.findByIdAndDelete({_id: req.params.id, userId: req.userId})
+        const analysis = await Analysis.findOneAndDelete({_id: req.params.id, userId: req.userId})
 
+        if(!analysis)
+            return res.status(404).json({success: false, message: "Analysis not found"})
 
         res.json({success: true, message: "analysis deleted"})
     } catch (error) {
