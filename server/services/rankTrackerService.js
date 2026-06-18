@@ -1,16 +1,23 @@
 import { chromium } from "playwright-core";
 import Browserbase from "@browserbasehq/sdk";
 
-const bb = new Browserbase({
-  apiKey: process.env.BROWSERBASE_API_KEY,
-});
-
 //search google for a keyword and extract ranking results for a target domain
 
 export async function rankTracker(keyword, targetDomain) {
   let browser;
 
   try {
+    if (!process.env.BROWSERBASE_API_KEY) {
+      return {
+        success: false,
+        error: "Browserbase API key is not configured",
+      };
+    }
+
+    const bb = new Browserbase({
+      apiKey: process.env.BROWSERBASE_API_KEY,
+    });
+
     //1. Initialize browserbase session & connect playwright
 
     const session = await bb.sessions.create({
@@ -19,13 +26,14 @@ export async function rankTracker(keyword, targetDomain) {
 
     browser = await chromium.connectOverCDP(session.connectUrl);
 
-    const page = browser.contexts()[0].pages()[0];
+    const context = browser.contexts()[0];
+    const page = context.pages()[0] || await context.newPage();
 
     page.setDefaultNavigationTimeout(45000);
 
     //2. Initial google visit & consent handling
 
-    await page.goto("https://ww.google.com", { waitUntil: "networkidle" });
+    await page.goto("https://www.google.com", { waitUntil: "domcontentloaded" });
 
     try {
       const btn = await page.$(
@@ -38,8 +46,8 @@ export async function rankTracker(keyword, targetDomain) {
       }
     } catch {}
 
-    let found = null,
-      allresults = [];
+    let found = null;
+    const allResults = [];
 
     const cleanTarget = targetDomain.replace("www.", "").toLowerCase();
 
@@ -48,7 +56,7 @@ export async function rankTracker(keyword, targetDomain) {
     for (let gPage = 0; gPage < 5; gPage++) {
       await page.goto(
         `https://www.google.com/search?q=${encodeURIComponent(keyword)}&start=${gPage * 10}&num=10&hl=en&gl=us`,
-        { waitUntil: "networkidle" },
+        { waitUntil: "domcontentloaded" },
       );
 
       //4. page extraction: retry up to 3 times if results are missing
@@ -86,7 +94,7 @@ export async function rankTracker(keyword, targetDomain) {
 
                 let s = "",
                   c = a.parentElement;
-                for (let j = 0; j < 6 && j++; c = c.parentElement) {
+                for (let j = 0; j < 6 && c; j++, c = c.parentElement) {
                   const txt = c.innerText || "";
                   if (txt.length > h3.innerText.length + 50) {
                     s = (
@@ -122,6 +130,48 @@ export async function rankTracker(keyword, targetDomain) {
         }
         if (!pageResults.length) break;
       }
+
+      pageResults.forEach((result, index) => {
+        const position = gPage * 10 + index + 1;
+        const entry = {
+          ...result,
+          position,
+          page: gPage + 1,
+        };
+
+        allResults.push(entry);
+
+        if (!found && result.domain.replace("www.", "").toLowerCase() === cleanTarget) {
+          found = entry;
+        }
+      });
+
+      if (found) break;
     }
-  } catch (error) {}
+
+    const competitors = allResults
+      .filter((result) => result.domain.replace("www.", "").toLowerCase() !== cleanTarget)
+      .slice(0, 10);
+
+    return {
+      success: true,
+      data: {
+        position: found?.position || null,
+        page: found?.page || null,
+        title: found?.title || "",
+        snippet: found?.snippet || "",
+        competitors,
+        totalResultsScanned: allResults.length,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message,
+    };
+  } finally {
+    if (browser) {
+      await browser.close().catch(() => {});
+    }
+  }
 }

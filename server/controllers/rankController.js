@@ -55,7 +55,9 @@ export const addKeyword = async (req, res) => {
       .status(201)
       .json({ success: true, message: "keyword tracking started", tracking });
 
-    keywordTracking(tracking);
+    keywordTracking(tracking).catch((error) =>
+      console.error("Initial rank check error:", error.message),
+    );
   } catch (error) {
     console.error("Add keyword error", error.message);
 
@@ -119,7 +121,9 @@ export const refreshKeyword = async (req, res) => {
     await tracking.save();
     res.json({ success: true, message: "Rank check started" });
 
-    keywordTracking(tracking);
+    keywordTracking(tracking).catch((error) =>
+      console.error("Manual rank check error:", error.message),
+    );
   } catch (error) {
     console.error("Get Keyword Error: ", error.message);
 
@@ -130,7 +134,7 @@ export const refreshKeyword = async (req, res) => {
 //delete keyword tracking
 export const deleteKeyword = async (req, res) => {
   try {
-    const tracking = await KeywordTracking.findByIdAndDelete({
+    const tracking = await KeywordTracking.findOneAndDelete({
       _id: req.params.id,
       userId: req.userId,
     });
@@ -138,13 +142,9 @@ export const deleteKeyword = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "Keyword tracking not found" });
-    tracking.status = "checking";
-    await tracking.save();
     res.json({ success: true, message: "Keyword tracking deleted" });
-
-    keywordTracking(tracking);
   } catch (error) {
-    console.error("Get Keyword Error: ", error.message);
+    console.error("Delete Keyword Error: ", error.message);
 
     res.status(500).json({ success: false, message: "Server error" });
   }

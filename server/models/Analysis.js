@@ -37,7 +37,7 @@ const analysisSchema = new mongoose.Schema({
         type: String, 
         required: true,
     },
-    overAllScore: {
+    overallScore: {
         type: Number,
         min: 0,
         max: 100,
@@ -158,7 +158,7 @@ const analysisSchema = new mongoose.Schema({
             }
         },
 
-        Keywords:[
+        keywords:[
             {
                 word: String,
                 count: Number,

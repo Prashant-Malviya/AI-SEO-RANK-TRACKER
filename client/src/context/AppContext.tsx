@@ -1,5 +1,3 @@
-import type { AxiosInstance } from "axios";
-import axios from "axios";
 import {
   createContext,
   useContext,
@@ -10,8 +8,11 @@ import {
 import api from "../api/api";
 
 interface User {
-  id: string;
+  _id: string;
   name: string;
+  email: string;
+  plan: "free" | "pro";
+  analysisCount: number;
 }
 
 interface AppContextInterface {
@@ -32,8 +33,6 @@ interface AppContextInterface {
 
   logout: () => void;
 }
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";
 
 const AppContext = createContext<AppContextInterface | undefined>(undefined);
 
