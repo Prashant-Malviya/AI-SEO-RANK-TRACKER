@@ -1,6 +1,6 @@
 ﻿# AI SEO Rank Tracker
 
-AI SEO Rank Tracker is a MERN portfolio application for running AI-assisted SEO audits and tracking keyword rankings. The app combines React + Vite, Express, MongoDB, JWT authentication, Browserbase/Playwright scraping, and Google Gemini structured output.
+AI SEO Rank Tracker is a MERN application for running AI-assisted SEO audits and tracking keyword rankings. The app combines React + Vite, Express, MongoDB, JWT authentication, Browserbase/Playwright scraping, and Google Gemini structured output.
 
 ## Architecture
 
